@@ -1,0 +1,121 @@
+-- База, отражающая количество мест каждого класса у разных самолетов
+select 
+	s.aircraft_code, 
+	s.fare_conditions, 
+	count(s.seat_no) seats
+from 
+	dst_project.seats s
+group by 
+	s.aircraft_code, 
+	s.fare_conditions
+order by 
+	s.aircraft_code, 
+	s.fare_conditions
+
+-- База: код самолета - количество мест
+select 
+	s.aircraft_code, 
+	count(s.seat_no) seats
+from 
+	dst_project.seats s
+group by 
+	s.aircraft_code
+order by 
+	s.aircraft_code 
+
+--База: рейс - количество занятых мест
+select 
+	bp.flight_id, 
+	count(bp.seat_no) occupied_seats
+from 
+	dst_project.boarding_passes bp
+group by 
+	bp.flight_id
+order by 
+    bp.flight_id
+
+--База: аэропорт -коодринаты
+select 
+	ap.airport_code,
+	ap.longitude,
+	ap.latitude
+from 
+	dst_project.airports ap
+order by 
+	ap.airport_code
+
+
+--Основная база 
+--старая версия
+select  
+    f.flight_id, 
+    f.flight_no, 
+    f.aircraft_code,
+    f.status,
+    f.arrival_airport,
+    f.scheduled_departure,
+    f.scheduled_arrival,
+    f.actual_departure,
+    f.actual_arrival,
+    sum(tf.amount) amount_total, 
+    date_part('hour', f.scheduled_arrival - f.scheduled_departure) * 60 + 
+	date_part('minute', f.scheduled_arrival - f.scheduled_departure)  duration,
+	date_part('hour', f.actual_arrival-f.scheduled_arrival) * 60 +
+	date_part('minute', f.actual_arrival-f.scheduled_arrival) delay,
+	sum(tf.amount) / (date_part('hour', f.scheduled_arrival - f.scheduled_departure) * 60 + 
+	date_part('minute', f.scheduled_arrival - f.scheduled_departure)) amount_per_min
+from 
+    dst_project.flights f
+    join dst_project.ticket_flights tf on f.flight_id = tf.flight_id
+where
+    f.departure_airport = 'AAQ'
+    and (date_trunc('month', f.scheduled_departure) in ('2017-01-01','2017-02-01', '2017-12-01'))
+    and f.status not in ('Cancelled')
+group by 
+    f.flight_id
+order by 
+    amount_per_min desc
+---Новая версия
+select  
+    f.flight_id, 
+    f.aircraft_code,
+    f.status,
+    f.arrival_airport,
+    f.scheduled_departure,
+    f.scheduled_arrival,
+    f.actual_departure,
+    f.actual_arrival,
+    sum(tf.amount) amount_total, 
+    date_part('hour', f.actual_arrival - f.actual_departure) * 60 + 
+	date_part('minute', f.actual_arrival - f.actual_departure)  actual_duration,
+	sum(tf.amount) / (date_part('hour', f.actual_arrival - f.actual_departure) * 60 + 
+	date_part('minute', f.actual_arrival - f.actual_departure)) amount_per_min
+from 
+    dst_project.flights f
+    join dst_project.ticket_flights tf on f.flight_id = tf.flight_id
+where
+    f.departure_airport = 'AAQ'
+    and (date_trunc('month', f.scheduled_departure) in ('2017-01-01','2017-02-01', '2017-12-01'))
+    and f.status not in ('Cancelled')
+group by 
+    f.flight_id
+order by 
+    amount_per_min desc
+
+
+
+Из открытых источников информации взята информация о расходе топлива: 
+http://newsruss.ru/doc/index.php/Расход_топлива_самолета
+код Марка самолета       Расход топлива   
+SU9 Sukhoi Superjet-100  1.7 т/час      
+733 Boeing 737-300       2.4 т/час
+
+А также определена стоимость аваитоплива по месяцам из Анапы: 
+https://favt.gov.ru/dejatelnost-ajeroporty-i-ajerodromy-ceny-na-aviagsm/?id=7329
+Месяц         Цена за 1т топлива (без НДС) руб.
+Январь 2017   41435
+Февраль 2017  39553
+
+
+Ссылка на презентацию
+https://drive.google.com/file/d/15AAAjxOYZS2JPgo3n483IAIbBuvJ57Hp/view?usp=sharing
